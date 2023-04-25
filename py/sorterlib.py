@@ -113,7 +113,9 @@ def _arc_score(img, start_pixel):
 
 START_PIXELS = [y*IMG_WIDTH+x for x in range(15,21) for y in range(18,22)]
 
-def bead_color(img):
+def bead_color_and_path(img):
   (pixels, score) = min((_arc_score(img, start_pixel) for start_pixel in START_PIXELS), key=lambda pair: pair[1])
   return (rgb_mean((_rgb_for_pixel(img, pixel) for pixel in pixels)), pixels)
 
+def bead_color(img):
+  return bead_color_and_path(img)[0]
