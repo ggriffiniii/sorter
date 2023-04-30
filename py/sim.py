@@ -48,7 +48,7 @@ class PreviewDelegate(QStyledItemDelegate):
 
     def sizeHint(self, option, index):
         # All items the same size.
-        return QSize(200, 200)
+        return QSize(80, 80)
 
 
 class PreviewModel(QAbstractTableModel):

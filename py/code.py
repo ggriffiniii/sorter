@@ -1,8 +1,8 @@
 import board
 import digitalio
 import pwmio
+import sorterlib
 import time
-import usb_cdc
 from adafruit_motor import servo
 from adafruit_ov7670 import (OV7670, OV7670_SIZE_DIV16, OV7670_COLOR_RGB)
 
@@ -10,18 +10,20 @@ SERVO_MAX_RANGE=300
 SERVO_MIN_PULSE=500
 SERVO_MAX_PULSE=2500
 
+# Servo hardware supports 300 degree range with 500-2500ms pulse widths
+# The hopper only supports 255 degrees of range, which is ~10 degree - ~265 degree on the hardware.
 hopper_servo = servo.Servo(
         pwmio.PWMOut(board.A0, frequency=50),
-        actuation_range=SERVO_MAX_RANGE,
-        min_pulse=SERVO_MIN_PULSE,
-        max_pulse=SERVO_MAX_PULSE)
+        actuation_range=255,
+        min_pulse=567,
+        max_pulse=2266)
 
-CHUTE_SERVO_RANGE=100
+# The chutes only support 100 degrees of range, which is 0 degree - 100 degree on the hardware.
 chute_servo = servo.Servo(
         pwmio.PWMOut(board.A1, frequency=50),
-        actuation_range=CHUTE_SERVO_RANGE,
+        actuation_range=100,
         min_pulse=500,
-        max_pulse=SERVO_MAX_PULSE // (SERVO_MAX_RANGE // CHUTE_SERVO_RANGE))
+        max_pulse=500 + 2000 // (300 // 100))
 
 cam_led = pwmio.PWMOut(board.D25, frequency=1000)
 cam = OV7670(
@@ -40,7 +42,7 @@ def capture(buffer):
   cam.capture(buffer)
 
 class ServoTracker(object):
-    DEGREES_PER_SEC = 240
+    DEGREES_PER_SEC = 210
     def __init__(self, degrees_to_travel):
         self.arrival_time = time.monotonic() + (degrees_to_travel / ServoTracker.DEGREES_PER_SEC)
     
@@ -55,20 +57,20 @@ def move_servo(s, angle):
 img_size = int(cam.width * cam.height)
 img = bytearray(2 * img_size)
 
-SIX_O_CLOCK_ANGLE=48
-CAM_ANGLE=150
+SIX_O_CLOCK_ANGLE=50
+CAM_ANGLE=152
 ROW_ANGLES = [
-    200,
-    215,
-    233,
-    255,
+  251,
+  231,
+  214,
+  202,
 ]
 
-DROP_ANGLE=175
-SLICE_0_ANGLE=6
+DROP_ANGLE=170
+SLICE_0_ANGLE=6.7
 SLICE_MULTIPLE=6.7
 
-MAX_TUBES = 30
+MAX_TUBES = 3
 COLOR_DIST_THRESHOLD = 40
 
 tubes = []
@@ -97,9 +99,10 @@ def best_tube_for_color(color):
   )
 
 def loop():
-  cam_led.duty_cycle = 65535*75//100
+  cam_led.duty_cycle = 65535 * 55 // 100
   hopper_servo.angle=DROP_ANGLE
-  chute_servo.angle=0
+  #chute_servo.angle=0
+  time.sleep(1.0)
   while True:
     run()
 
@@ -115,12 +118,13 @@ def run():
     best_tube.count += 1
   else:
     best_tube = Tube(len(tubes), bead_color)
-    tubes.append(tube)
+    tubes.append(best_tube)
 
-  move_servo(chute_servo, SLICE_0_ANGLE+(best_tube.slice_idx()*SLICE_MULTIPLE))
-  move_servo(hopper_servo, ROW_ANGLES[best_tube.row_idx()]).wait(0.2)
+  move_servo(hopper_servo, ROW_ANGLES[1]).wait(0.2)
+  #move_servo(chute_servo, SLICE_0_ANGLE+(best_tube.slice_idx()*SLICE_MULTIPLE))
+  #move_servo(hopper_servo, ROW_ANGLES[best_tube.row_idx()]).wait(0.2)
   move_servo(hopper_servo, DROP_ANGLE).wait(0.2)
+
 
 if __name__ == "__main__":
   loop()
-

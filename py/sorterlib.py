@@ -1,4 +1,7 @@
-import itertools
+try:
+  import itertools
+except ImportError:
+  import adafruit_itertools as itertools
 import math
 from collections import namedtuple
 
@@ -8,17 +11,19 @@ IMG_SIZE = IMG_WIDTH * IMG_HEIGHT
 
 RGB = namedtuple("RGB", "r g b")
 
+sqrt = math.sqrt
+
 def rgb_dist(a, b):
   rmean = (a.r + b.r) // 2
   r = a.r - b.r
   g = a.g - b.g
   b = a.b - b.b
-  return math.isqrt(
+  return int(sqrt(
       (((512+rmean)*r*r)>>8)
       +
       4*g*g
       +
-      (((767-rmean)*b*b)>>8)
+      (((767-rmean)*b*b)>>8))
   )
 
 def rgb_mean(rgb_iterable):
@@ -36,9 +41,9 @@ def rgb_mean(rgb_iterable):
     return RGB(0,0,0)
 
   return RGB(
-    math.isqrt(sum_rgb.r // count),
-    math.isqrt(sum_rgb.g // count),
-    math.isqrt(sum_rgb.b // count),
+    int(sqrt(sum_rgb.r // count)),
+    int(sqrt(sum_rgb.g // count)),
+    int(sqrt(sum_rgb.b // count)),
   )
 
 def bead_arc(start_pixel):
@@ -111,7 +116,7 @@ def _arc_score(img, start_pixel):
 
   return (distances.keys(), total)
 
-START_PIXELS = [y*IMG_WIDTH+x for x in range(15,21) for y in range(18,22)]
+START_PIXELS = [y*IMG_WIDTH+x for x in range(15,21) for y in range(21,24)]
 
 def bead_color_and_path(img):
   (pixels, score) = min((_arc_score(img, start_pixel) for start_pixel in START_PIXELS), key=lambda pair: pair[1])
