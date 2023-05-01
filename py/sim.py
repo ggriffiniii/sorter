@@ -15,11 +15,14 @@ preview = namedtuple("preview", "title image")
 class Tube(object):
   def __init__(self, idx, color):
     self.idx = idx
-    self.color = color
-    self.count = 0
+    self.colors = [color]
+    self.count = 1
+
+  def rgb_min_dist(self, color):
+    return min((sorterlib.rgb_dist(color, tube_color) for tube_color in self.colors))
 
   def __str__(self):
-    return f'Tube({self.idx}, color={self.color}, count={self.count})'
+    return f'Tube({self.idx}, colors={self.colors}, count={self.count})'
 
 
 class PreviewDelegate(QStyledItemDelegate):
@@ -114,16 +117,22 @@ class MainWindow(QMainWindow):
             for idx in range(40*30, 40*40):
                 image.setPixel(idx%40, idx//40, bead_rgb_int)
             item = preview(fn, image)
-            (best_tube, dist) = min(((tube, sorterlib.rgb_dist(bead_color, tube.color)) for tube in self.model.tubes), key=lambda pair: pair[1], default=(None, 2**31))
-            if dist < 40 or len(self.model.tubes) == 30:
-              print(f'{fn} {bead_color} is {dist} from {best_tube}; assigning')
-              self.model.beads[best_tube.idx].append(item)
-              best_tube.count += 1
-            else:
-              print(f'{fn} {bead_color} is {dist} from {best_tube}; allocating')
+            (closest_tube, dist) = min(((tube, tube.rgb_min_dist(bead_color)) for tube in self.model.tubes), key=lambda pair: pair[1], default=(None, 2**31))
+            if dist < 35:
+              print(f'{fn} {bead_color} is {dist} from {closest_tube}; assigning')
+              self.model.beads[closest_tube.idx].append(item)
+              closest_tube.count += 1
+            elif len(self.model.tubes) < 30:
+              print(f'{fn} {bead_color} is {dist} from {closest_tube}; allocating')
               tube_idx = len(self.model.tubes)
               self.model.tubes.append(Tube(tube_idx, bead_color))
               self.model.beads.append([item])
+            else:
+              furthest_tube = max(self.model.tubes, key=lambda tube: tube.rgb_min_dist(bead_color))
+              print(f'{fn} {bead_color} is {dist} from {closest_tube}; overflow assigning to {furthest_tube}')
+              self.model.beads[furthest_tube.idx].append(item)
+              furthest_tube.count += 1
+              furthest_tube.colors.append(bead_color)
 
         self.model.layoutChanged.emit()
 

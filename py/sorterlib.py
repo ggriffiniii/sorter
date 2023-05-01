@@ -46,6 +46,8 @@ def rgb_mean(rgb_iterable):
     int(sqrt(sum_rgb.b // count)),
   )
 
+BEAD_ARC_LEN = 19
+
 def bead_arc(start_pixel):
   start_x = start_pixel % IMG_WIDTH
   start_y = start_pixel / IMG_WIDTH
@@ -53,6 +55,7 @@ def bead_arc(start_pixel):
   assert start_y > 7
 
   idx = start_pixel
+  yield idx
   for _ in range(5):
     idx -= IMG_WIDTH
     yield idx
@@ -85,36 +88,23 @@ def _rgb_for_pixel(img, pixel_idx):
 
 
 def _arc_score(img, start_pixel):
-  distances = {}
+  path_idx_to_img_idx = []
+  path_idx_to_rgb = []
+  for img_idx in bead_arc(start_pixel):
+    path_idx_to_img_idx.append(img_idx)
+    path_idx_to_rgb.append(_rgb_for_pixel(img, img_idx))
+  path_idx_to_total_dist = [0] * BEAD_ARC_LEN
 
-  for (a, b) in itertools.combinations(bead_arc(start_pixel), 2):
-    rgb_a = _rgb_for_pixel(img, a)
-    rgb_b = _rgb_for_pixel(img, b)
+  for ((path_idx_a, rgb_a), (path_idx_b, rgb_b)) in itertools.combinations(enumerate(path_idx_to_rgb), 2):
     dist = rgb_dist(rgb_a, rgb_b)
-    a_distances = distances.get(a, {})
-    a_distances[b] = dist
-    distances[a] = a_distances
+    path_idx_to_total_dist[path_idx_a] += dist
+    path_idx_to_total_dist[path_idx_b] += dist
 
-    b_distances = distances.get(b, {})
-    b_distances[a] = dist
-    distances[b] = b_distances
+  paths = sorted(enumerate(path_idx_to_total_dist), key=lambda pair: pair[1])[:12]
 
-  while len(distances) > 12:
-    (max_pixel, _max_dist) = max(
-        (
-            (pixel, sum(dists.values()))
-            for (pixel, dists)
-            in distances.items()
-        ),
-        key=lambda pair: pair[1]
-    )
-    del distances[max_pixel]
-    for dists in distances.values():
-      del dists[max_pixel]
+  total = sum((total_dist for (path_idx, total_dist) in paths))
 
-  total = sum(sum(d.values()) for d in distances.values()) // 2
-
-  return (distances.keys(), total)
+  return ([path_idx_to_img_idx[path_idx] for (path_idx, _dist) in paths], total)
 
 START_PIXELS = [y*IMG_WIDTH+x for x in range(15,21) for y in range(21,24)]
 

@@ -1,6 +1,6 @@
 import unittest
 import itertools
-from sorterlib import RGB, bead_color, bead_arc, rgb_dist, IMG_WIDTH, IMG_HEIGHT
+from sorterlib import RGB, bead_color, bead_arc, rgb_dist, IMG_WIDTH, IMG_HEIGHT, BEAD_ARC_LEN
 
 class SorterLibTest(unittest.TestCase):
   def test_rgb_dist(self):
@@ -23,3 +23,6 @@ class SorterLibTest(unittest.TestCase):
   def test_bead_color(self):
     img = bytearray(2 * IMG_WIDTH * IMG_HEIGHT)
     self.assertEqual(None, bead_color(img))
+
+  def test_bead_arc_len(self):
+    self.assertEqual(BEAD_ARC_LEN, len(list(bead_arc(1160))))
